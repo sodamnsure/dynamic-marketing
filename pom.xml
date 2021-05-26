@@ -12,13 +12,16 @@
         <module>marketing-rule-engine</module>
     </modules>
 
+    <!-- 集中定义依赖版本号 -->
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
+        <jackson.version>2.9.5</jackson.version>
+        <lombok.version>1.18.12</lombok.version>
     </properties>
 
     <repositories>
-        <!--配置阿里云仓库-->
+        <!-- 配置阿里云仓库 -->
         <repository>
             <id>alimaven</id>
             <name>aliyun maven</name>
@@ -34,11 +37,20 @@
         </repository>
     </repositories>
 
+
+
     <dependencies>
+        <!-- 类构造工具包 -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.18.12</version>
+        </dependency>
+        <!-- Jackson Json处理工具包 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
     </dependencies>
 
