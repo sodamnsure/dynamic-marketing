@@ -6,8 +6,11 @@ import com.feelings.marketing.rule.pojo.LogBean;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 
 import java.util.HashMap;
+import java.util.Properties;
 
 /**
  * @Author: sodamnsure
@@ -17,6 +20,14 @@ import java.util.HashMap;
 public class ActionLogGen {
     public static void main(String[] args) throws JsonProcessingException, InterruptedException {
         ObjectMapper mapper = new ObjectMapper();
+        // 配置kafka
+        Properties props = new Properties();
+        props.setProperty("bootstrap.servers", "feelings:9092");
+        props.put("acks", "all");
+        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        KafkaProducer<String, String> kafkaProducer = new KafkaProducer<>(props);
+
 
         while (true) {
             LogBean logBean = new LogBean();
@@ -63,8 +74,13 @@ public class ActionLogGen {
             logBean.setProperties(properties);
 
             String log = mapper.writeValueAsString(logBean);
-            System.out.println(log);
-            Thread.sleep(RandomUtils.nextInt(500, 3000));
+            // System.out.println(log);
+
+            // 写入kafka的topic，封装log
+            ProducerRecord<String, String> record = new ProducerRecord<>("test", log);
+            kafkaProducer.send(record);
+
+            Thread.sleep(RandomUtils.nextInt(500, 600));
         }
 
     }
