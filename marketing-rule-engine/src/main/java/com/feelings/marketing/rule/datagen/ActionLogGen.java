@@ -68,7 +68,7 @@ public class ActionLogGen {
                         // logBean设置timeStamp
                         logBean.setTimeStamp(System.currentTimeMillis());
                         // logBean设置eventId: 随机生成26个英文字母当中的一个
-                        logBean.setEventId(RandomStringUtils.randomAlphabetic(1));
+                        logBean.setEventId(RandomStringUtils.randomAlphabetic(1).toUpperCase());
                         // logBean设置properties
                         HashMap<String, String> properties = new HashMap<>();
                         for (int i = 0; i < RandomUtils.nextInt(1, 5); i++) {
