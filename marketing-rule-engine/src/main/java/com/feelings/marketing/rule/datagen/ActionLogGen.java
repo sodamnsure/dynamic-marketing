@@ -85,7 +85,7 @@ public class ActionLogGen {
                         // System.out.println(log);
 
                         // 写入kafka的topic，封装log
-                        ProducerRecord<String, String> record = new ProducerRecord<>("test", log);
+                        ProducerRecord<String, String> record = new ProducerRecord<>("ActionLog", log);
                         kafkaProducer.send(record);
 
                         // 在run方法中是不能抛异常的
