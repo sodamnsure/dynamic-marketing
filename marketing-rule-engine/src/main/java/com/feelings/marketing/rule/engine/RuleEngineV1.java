@@ -3,6 +3,7 @@ package com.feelings.marketing.rule.engine;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.feelings.marketing.rule.pojo.LogBean;
 import com.feelings.marketing.rule.pojo.ResultBean;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.common.state.ListState;
@@ -20,6 +21,8 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import java.util.ArrayList;
+import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -110,12 +113,85 @@ public class RuleEngineV1 {
 
                     if ("v3".equals(k3Value) && "v80".equals(k100Value) && "v360".equals(k230Value)) {
                         // *  行为属性条件：U(p1=v3, p2=v2) >= 3次 且 G(p6=v8, p4=v5, p1=v2) >= 1次
+                        Iterable<LogBean> logBeans = eventState.get();
+                        int u_count = 0;
+                        int g_count = 0;
+                        for (LogBean logBean : logBeans) {
+                            // 判断U事件原子条件的次数
+                            if (logBean.getEventId().equals("U")) {
+                                Map<String, String> properties = bean.getProperties();
+                                String p1 = properties.get("p1");
+                                String p2 = properties.get("p2");
+
+                                if ("v3".equals(p1) && "v2".equals(p2)) u_count++;
+                            }
+
+                            // 判断事件原子G条件的次数
+                            if (logBean.getEventId().equals("G")) {
+                                Map<String, String> properties = bean.getProperties();
+                                String p1 = properties.get("p1");
+                                String p4 = properties.get("p4");
+                                String p6 = properties.get("p6");
+
+                                if ("v8".equals(p6) && "v5".equals(p4) && "v2".equals(p1)) g_count++;
+                            }
+
+                        }
+
+                        // 如果行为次数条件满足
+                        if (u_count >= 3 && g_count >= 1) {
+                            ArrayList<LogBean> beanList = new ArrayList<>();
+                            CollectionUtils.addAll(beanList, logBeans.iterator());
+                            int index = -1;
+                            // *  行为次序条件：依次做过--> W(p1=v4) --> R(p2 = v3) --> F
+                            for (int i = 0; i < beanList.size(); i++) {
+                                LogBean logBean = beanList.get(i);
+                                if ("W".equals(logBean.getEventId())) {
+                                    Map<String, String> properties = logBean.getProperties();
+                                    String p1 = properties.get("p1");
+                                    if ("v4".equals(p1)) {
+                                        index = i;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            int index2 = -1;
+                            if (index >= 0 && index + 1 < beanList.size()) {
+                                for (int i = index + 1; i < beanList.size(); i++) {
+                                    LogBean logBean = beanList.get(i);
+                                    if ("R".equals(logBean.getEventId())) {
+                                        Map<String, String> properties = logBean.getProperties();
+                                        String p2 = properties.get("p2");
+                                        if ("v3".equals(p2)) {
+                                            index2 = i;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            int index3 = -1;
+                            if (index2 >= 0 && index2 + 1 < beanList.size()) {
+                                for (int i = index2 + 1; i < beanList.size(); i++) {
+                                    LogBean logBean = beanList.get(i);
+                                    if ("F".equals(logBean.getEventId())) {
+                                        index3 = i;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (index3 > -1) {
+                                ResultBean resultBean = new ResultBean();
+                                resultBean.setDeviceId(bean.getDeviceId());
+                                resultBean.setRuleId("test_rule_1");
+                                resultBean.setTimeStamp(bean.getTimeStamp());
+                                collector.collect(resultBean);
+                            }
+                        }
 
                     }
-
-
-                    // *  行为次序条件：依次做过--> W(p1=v4) --> R(p2 = v3) --> F
-
                 }
             }
         });
