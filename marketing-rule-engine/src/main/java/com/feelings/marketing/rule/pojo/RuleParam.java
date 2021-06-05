@@ -25,4 +25,6 @@ public class RuleParam implements Serializable {
     private List<RuleAtomicParam> userActionParams;
     // 规则中的行为次序条件
     private List<RuleAtomicParam> userActionSeqParams;
+    // 用于记录查询服务所返回的序列中匹配的最大步骤好
+    private int userActionSeqQueriedMaxStep;
 }
