@@ -2,6 +2,8 @@ package com.feelings.marketing.rule.service;
 
 import com.feelings.marketing.rule.pojo.RuleParam;
 
+import java.io.IOException;
+
 /**
  * @Author: sodamnsure
  * @Date: 2021/6/5 11:04 上午
