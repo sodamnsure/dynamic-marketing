@@ -22,7 +22,7 @@ public class RuleParam implements Serializable {
     // 规则中的用户画像条件
     private HashMap<String, String> userProfileParams;
     // 规则中的行为属性条件
-    private List<RuleAtomicParam> userActionParams;
+    private List<RuleAtomicParam> userActionCountParams;
     // 规则中的行为次序条件
     private List<RuleAtomicParam> userActionSeqParams;
     // 用于记录查询服务所返回的序列中匹配的最大步骤好
