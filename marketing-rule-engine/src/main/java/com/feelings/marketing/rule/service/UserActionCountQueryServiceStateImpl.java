@@ -5,10 +5,9 @@ import com.feelings.marketing.rule.pojo.RuleAtomicParam;
 import com.feelings.marketing.rule.pojo.RuleParam;
 import org.apache.flink.api.common.state.ListState;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
+
+import static com.feelings.marketing.rule.utils.RuleCalcUtil.eventBeanMatchEventParam;
 
 /**
  * @Author: sodamnsure
@@ -19,8 +18,9 @@ public class UserActionCountQueryServiceStateImpl implements UserActionCountQuer
     /**
      * 查询规则参数对象中，要求的用户行为次数类条件是否满足
      * 同时将查询到的真实次数 set 回规则参数对象中
+     *
      * @param eventState 用户事件明确存储state
-     * @param ruleParam 规则整体参数对象
+     * @param ruleParam  规则整体参数对象
      * @return 条件是否满足
      */
     @Override
@@ -45,6 +45,7 @@ public class UserActionCountQueryServiceStateImpl implements UserActionCountQuer
     /**
      * 根据传入的历史明细和规则条件
      * 挨个统计每个规则原子条件的真实发生次数，并将结果set回规则条件参数中
+     *
      * @param logBeansIterable
      * @param userActionCountParams
      */
@@ -61,30 +62,5 @@ public class UserActionCountQueryServiceStateImpl implements UserActionCountQuer
         }
     }
 
-    /**
-     * 工具方法：用于判断一个带判断事件和一个规则中的原子条件是否一致
-     * @param eventBean
-     * @param eventParam
-     * @return
-     */
-    private boolean eventBeanMatchEventParam(LogBean eventBean, RuleAtomicParam eventParam) {
 
-        // 如果传入的事件ID与参数中的事件ID相同, 如果不相同，直接返回false
-        if (eventBean.getEventId().equals(eventParam.getEventId())) {
-            // 取出待判断事件中的属性
-            Map<String, String> eventBeanProperties = eventBean.getProperties();
-            // 取出条件中的事件属性
-            HashMap<String, String> eventParamProperties = eventParam.getProperties();
-            // 遍历条件中每个属性和值
-            Set<Map.Entry<String, String>> entries = eventParamProperties.entrySet();
-            for (Map.Entry<String, String> entry : entries) {
-                // 判断条件中的属性值是否等于事件中带判断条件的属性值，如果不相等，直接返回false
-                if (!entry.getValue().equals(eventBeanProperties.get(entry.getKey()))) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return false;
-    }
 }
