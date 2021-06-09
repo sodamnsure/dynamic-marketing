@@ -53,7 +53,7 @@ public class UserActionCountQueryServiceStateImpl implements UserActionCountQuer
         for (LogBean logBean : logBeansIterable) {
             for (RuleAtomicParam userActionCountParam : userActionCountParams) {
                 // 判断当前logBean和当前原子条件userActionCountParam是否一致
-                boolean isMatch = eventBeanMatchEventParam(logBean, userActionCountParam);
+                boolean isMatch = eventBeanMatchEventParam(logBean, userActionCountParam, true);
                 // 如果一致，则查询次数结果加一
                 if (isMatch) {
                     userActionCountParam.setRealCounts(userActionCountParam.getRealCounts() + 1);

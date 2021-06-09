@@ -15,6 +15,7 @@ import java.util.Set;
 public class RuleCalcUtil {
     /**
      * 工具方法：用于判断一个带判断事件和一个规则中的原子条件是否一致
+     *
      * @param eventBean
      * @param eventParam
      * @return
@@ -38,5 +39,14 @@ public class RuleCalcUtil {
             return true;
         }
         return false;
+    }
+
+
+    public static boolean eventBeanMatchEventParam(LogBean eventBean, RuleAtomicParam eventParam, boolean needTimeCompare) {
+        boolean b = eventBeanMatchEventParam(eventBean, eventParam);
+        // 要考虑一点，外部传入的条件中，时间范围条件，如果起始、结束没有约束，应该传入一个 -1
+        Long rangeStart = eventParam.getRangeStart();
+        Long rangeEnd = eventParam.getRangeEnd();
+        return b && eventBean.getTimeStamp() >= (rangeStart == -1 ? 0 : rangeStart) && eventBean.getTimeStamp() <= (rangeEnd == -1 ? Long.MAX_VALUE : rangeEnd);
     }
 }

@@ -55,7 +55,7 @@ public class UserActionSeqQueryServiceStateImpl implements UserActionSeqQuerySer
             for (int i = index; i < eventList.size(); i++) {
                 LogBean logBean = eventList.get(i);
                 // 判断当前事件是否满足当前次序条件
-                boolean match = RuleCalcUtil.eventBeanMatchEventParam(logBean, userActionSeqParam);
+                boolean match = RuleCalcUtil.eventBeanMatchEventParam(logBean, userActionSeqParam, true);
                 // 如果匹配，则最大步骤号+1，且更新下一次内循环的起始位置
                 if (match) {
                     maxStep++;
