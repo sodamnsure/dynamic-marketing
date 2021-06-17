@@ -17,6 +17,8 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class RuleParam implements Serializable {
+    //
+    private String ruleId;
     // 规则中的触发条件
     private RuleAtomicParam triggerParam;
     // 规则中的用户画像条件

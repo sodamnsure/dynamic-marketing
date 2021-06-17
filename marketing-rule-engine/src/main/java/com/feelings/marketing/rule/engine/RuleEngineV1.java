@@ -1,8 +1,15 @@
 package com.feelings.marketing.rule.engine;
 
+import com.feelings.marketing.rule.functions.DeviceKeySelector;
+import com.feelings.marketing.rule.functions.JsonToBeanMapFunction;
+import com.feelings.marketing.rule.functions.RuleProcessFunction;
 import com.feelings.marketing.rule.functions.SourceFunctions;
+import com.feelings.marketing.rule.pojo.LogBean;
+import com.feelings.marketing.rule.pojo.ResultBean;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
+import org.apache.flink.streaming.api.datastream.KeyedStream;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
 /**
@@ -11,12 +18,25 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
  * @desc: 静态规则引擎版本1主程序
  */
 public class RuleEngineV1 {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(new Configuration());
+
         // 添加kafka消费source
         DataStreamSource<String> logStream = env.addSource(SourceFunctions.getKafkaEventSource());
-        // 将json格式的数据转成logBean对象
 
+        // 将json格式的数据转成logBean对象
+        SingleOutputStreamOperator<LogBean> beanStream = logStream.map(new JsonToBeanMapFunction());
+
+        // 对数据按照用户deviceId分key
+        KeyedStream<LogBean, String> keyed = beanStream.keyBy(new DeviceKeySelector());
+
+        // 开始核心计算处理
+        SingleOutputStreamOperator<ResultBean> resultStream = keyed.process(new RuleProcessFunction());
+
+        // 打印
+        resultStream.print();
+
+        env.execute();
 
     }
 }
