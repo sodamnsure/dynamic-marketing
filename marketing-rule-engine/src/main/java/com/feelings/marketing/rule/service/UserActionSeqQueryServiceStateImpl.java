@@ -72,4 +72,22 @@ public class UserActionSeqQueryServiceStateImpl implements UserActionSeqQuerySer
         }
         return maxStep;
     }
+
+    /**
+     * 序列匹配，性能改进版
+     * @param events
+     * @param userActionSeqParams
+     * @return
+     */
+    public int queryActionSeqHelper2(Iterable<LogBean> events, List<RuleAtomicParam> userActionSeqParams) {
+        int maxStep = 0;
+        for (LogBean event : events) {
+            // 遍历event，查看和用户的第maxStep是否一致
+            if (RuleCalcUtil.eventBeanMatchEventParam(event, userActionSeqParams.get(maxStep))) {
+                maxStep++;
+            }
+            if (maxStep == userActionSeqParams.size()) break;
+        }
+        return maxStep;
+    }
 }
