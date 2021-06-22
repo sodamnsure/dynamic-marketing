@@ -22,7 +22,7 @@ create table default.event_detail_kafka
     timeStamp      UInt64,
     eventId        String,
     properties     Map(String, String)
-) engine = Kafka('47.94.223.241:9092', 'ActionLog', 'group1', 'JSONEachRow');
+) engine = Kafka('feelings:9092', 'ActionLog', 'group1', 'JSONEachRow');
 
 
 -- 创建事件明细表
