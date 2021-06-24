@@ -19,6 +19,7 @@
         <hbase.client.version>2.0.6</hbase.client.version>
         <flink.version>1.12.0</flink.version>
         <mysql.version>8.0.20</mysql.version>
+        <clickhouse.version>1.6-stable</clickhouse.version>
     </properties>
 
     <dependencies>
@@ -73,6 +74,12 @@
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>${mysql.version}</version>
+        </dependency>
+        <!-- clickhouse驱动 -->
+        <dependency>
+            <groupId>com.github.housepower</groupId>
+            <artifactId>clickhouse-native-jdbc</artifactId>
+            <version>${clickhouse.version}</version>
         </dependency>
     </dependencies>
 </project>
