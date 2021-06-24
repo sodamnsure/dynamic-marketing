@@ -24,7 +24,7 @@ public class UserActionCountQueryServiceStateImpl implements UserActionCountQuer
      * @return 条件是否满足
      */
     @Override
-    public boolean queryActionCounts(ListState<LogBean> eventState, RuleParam ruleParam) throws Exception {
+    public boolean queryActionCounts(String deviceId, ListState<LogBean> eventState, RuleParam ruleParam) throws Exception {
 
         // 取出用户行为次数类条件
         List<RuleAtomicParam> userActionCountParams = ruleParam.getUserActionCountParams();
