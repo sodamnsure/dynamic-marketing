@@ -25,7 +25,7 @@ public class UserActionSeqQueryServiceStateImpl implements UserActionSeqQuerySer
      * @return 返回成立与否
      */
     @Override
-    public boolean queryActionSeq(ListState<LogBean> eventState, RuleParam ruleParam) throws Exception {
+    public boolean queryActionSeq(String deviceId, ListState<LogBean> eventState, RuleParam ruleParam) throws Exception {
         Iterable<LogBean> logBeans = eventState.get();
         List<RuleAtomicParam> userActionSeqParams = ruleParam.getUserActionSeqParams();
         // 调用helper方法统计实际匹配的最大步骤号
