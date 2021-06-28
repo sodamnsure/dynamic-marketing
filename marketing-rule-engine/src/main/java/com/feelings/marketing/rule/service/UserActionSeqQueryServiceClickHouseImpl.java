@@ -6,6 +6,8 @@ import com.feelings.marketing.rule.utils.ConnectionUtils;
 import org.apache.flink.api.common.state.ListState;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 
 /**
  * @Author: sodamnsure
@@ -14,7 +16,7 @@ import java.sql.Connection;
  */
 public class UserActionSeqQueryServiceClickHouseImpl implements UserActionSeqQueryService{
 
-    Connection conn;
+    private Connection conn;
 
     public UserActionSeqQueryServiceClickHouseImpl() throws Exception {
         conn = ConnectionUtils.getClickHouseConnection();
@@ -22,6 +24,24 @@ public class UserActionSeqQueryServiceClickHouseImpl implements UserActionSeqQue
 
     @Override
     public boolean queryActionSeq(String deviceId, ListState<LogBean> eventState, RuleParam ruleParam) throws Exception {
-        return false;
+        // 获取规则中，路径模式的总步骤数
+        int totalStep = ruleParam.getUserActionSeqParams().size();
+        // 取出查询SQL
+        String sql = ruleParam.getActionSeqQuerySql();
+        Statement statement = conn.createStatement();
+        // 执行查询SQL
+        ResultSet resultSet = statement.executeQuery(sql);
+        // 从返回结果中进行条件判断
+        int i = 2;
+        int maxStep = 0;
+        while (resultSet.next()) {
+            for (;i < totalStep + 2; i++) {
+                maxStep += resultSet.getInt(i);
+            }
+        }
+
+        // 返回最大步骤号
+        ruleParam.setUserActionSeqQueriedMaxStep(maxStep);
+        return maxStep==totalStep;
     }
 }
