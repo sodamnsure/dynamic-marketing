@@ -53,6 +53,8 @@ public class RuleProcessFunctionV2 extends KeyedProcessFunction<String, LogBean,
 
         /**
          * 获取规则参数
+         * TODO 规则的获取，现在是通过模拟器生成
+         * TODO 后期需要改造成从外部获取
          */
         ruleParam = RuleSimulator.getRuleParam();
 
@@ -67,7 +69,7 @@ public class RuleProcessFunctionV2 extends KeyedProcessFunction<String, LogBean,
     }
 
     /**
-     * 规则计算核心方法
+     * 规则计算核心方法，来一个事件调用一次
      *
      * @param logBean
      * @param context
@@ -77,33 +79,46 @@ public class RuleProcessFunctionV2 extends KeyedProcessFunction<String, LogBean,
     @Override
     public void processElement(LogBean logBean, Context context, Collector<ResultBean> collector) throws Exception {
         // 将收到的事件放入历史明细state存储中
+        // 超过2小时的logBean会被自动清除（前面设置了ttl存活时长）
         eventState.add(logBean);
         // 计算当前时间的前两小时时间戳
         long splitPoint = System.currentTimeMillis() - 2 * 60 * 60 * 1000;
 
 
-        // 判断是否满足触发条件
+        /**
+         * 主逻辑，进行规则触发和计算
+         */
         if (ruleParam.getTriggerParam().getEventId().equals(logBean.getEventId())) {
             // 查询画像条件
-            boolean profileMatch = userProfileQueryService.judgeProfileCondition(logBean.getEventId(), ruleParam);
-            if (!profileMatch) return;
+            boolean profileIfMatch = userProfileQueryService.judgeProfileCondition(logBean.getEventId(), ruleParam);
+            if (!profileIfMatch) return;
 
-            // 遍历规则中的count类条件，按照时间跨度，分成两类
+            /**
+             * 查询事件次数类条件是否满足
+             * 这里要考虑，条件的事件跨度问题
+             * 如果条件的时间跨度在2小时内，那么，就把这些条件交给stateService去计算
+             * 如果时间的时间跨度在2小时之前，那么，就把这些条件交给ClickHouseService去计算
+             */
+            // 遍历规则中的次数类条件，按照时间跨度，分成两组
             List<RuleAtomicParam> userActionCountParams = ruleParam.getUserActionCountParams();
-            ArrayList<RuleAtomicParam> forwardRangeParams = new ArrayList<>();
-            ArrayList<RuleAtomicParam> nearRangeParams = new ArrayList<>();
+            ArrayList<RuleAtomicParam> forwardRangeParams = new ArrayList<>();  // 存远跨度的条件的list
+            ArrayList<RuleAtomicParam> nearRangeParams = new ArrayList<>(); // 存近跨度的条件list
 
             for (RuleAtomicParam userActionCountParam : userActionCountParams) {
                 if (userActionCountParam.getRangeStart() < splitPoint) {
+                    // 如果条件起始时间小于2小时分界点，放入远期查询list
                     forwardRangeParams.add(userActionCountParam);
                 } else {
+                    // 否则，放入近期查询list
                     nearRangeParams.add(userActionCountParam);
                 }
             }
 
             // 查询state中行为次数条件
             if (nearRangeParams.size() > 0) {
+                // 将规则总参数对象中的"次数条件"覆盖成：近期条件组
                 ruleParam.setUserActionCountParams(nearRangeParams);
+                // 交给stateService，对这一组条件进行计算
                 boolean countMatch = userActionCountQueryStateService.queryActionCounts("", eventState, ruleParam);
                 if (!countMatch) return;
             }
@@ -111,16 +126,23 @@ public class RuleProcessFunctionV2 extends KeyedProcessFunction<String, LogBean,
 
             // 如果在state中查询的部分条件满足，则继续在ClickHouse中查询各个远期条件
             if (forwardRangeParams.size() > 0) {
+                // 将规则总参数中对象中的"次数类条件"覆盖成：远期条件组
                 ruleParam.setUserActionCountParams(forwardRangeParams);
                 boolean b = userActionCountQueryClickHouseService.queryActionCounts(logBean.getDeviceId(), null, ruleParam);
                 if (!b) return;
             }
 
 
-            // 查询行为序列条件
+            /**
+             * 序列类条件的查询
+             * 本项目对序列类条件进行了简化
+             * 一个规则中，只存在一个"序列模式"
+             * 它的条件时间跨度，设置在了这个"序列模式"中的每一个原子条件中，且都一致
+             */
+            // 取出规则中的序列模式
             List<RuleAtomicParam> userActionSeqParams = ruleParam.getUserActionSeqParams();
             // 如果序列模型中的起始时间小于2小时分界点，则交给ClickHouse服务模块去处理
-            if (userActionSeqParams.size() > 0 && userActionSeqParams.get(0).getRangeStart() < splitPoint) {
+            if (userActionSeqParams != null && userActionSeqParams.size() > 0 && userActionSeqParams.get(0).getRangeStart() < splitPoint) {
                 boolean b = userActionSeqQueryClickHouseService.queryActionSeq(logBean.getDeviceId(), null, ruleParam);
                 if (!b) return;
             }
