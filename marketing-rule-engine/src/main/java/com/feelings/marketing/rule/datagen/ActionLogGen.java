@@ -20,7 +20,7 @@ import java.util.Properties;
 public class ActionLogGen {
     public static void main(String[] args)  {
         // 创建多线程，并行执行，创建Runnable匿名内部类
-        for (int i = 0; i < 40; i++) {
+        for (int i = 0; i < 10; i++) {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -35,7 +35,7 @@ public class ActionLogGen {
                     while (true) {
                         LogBean logBean = new LogBean();
                         // logBean设置account: 生成1到10000之间的随机数，不足6位补齐0
-                        String account = StringUtils.leftPad(RandomUtils.nextInt(1, 10000) + "", 6, "0");
+                        String account = StringUtils.leftPad(RandomUtils.nextInt(1, 10) + "", 6, "0");
                         logBean.setAccount(account);
                         // logBean设置appId
                         logBean.setAppId("com.feelings.marketing");
@@ -90,7 +90,7 @@ public class ActionLogGen {
 
                         // 在run方法中是不能抛异常的
                         try {
-                            Thread.sleep(RandomUtils.nextInt(500, 2000));
+                            Thread.sleep(RandomUtils.nextInt(2000, 3000));
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }

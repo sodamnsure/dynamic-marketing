@@ -34,8 +34,8 @@ public class RuleSimulator {
         paramProps1.put("p1", "v1");
         param1.setProperties(paramProps1);
         param1.setThreshold(2);
-        param1.setRangeStart(-1L);
-        param1.setRangeEnd(-1L);
+        param1.setRangeStart(0L);
+        param1.setRangeEnd(Long.MAX_VALUE);
 
 
         RuleAtomicParam param2 = new RuleAtomicParam();
@@ -44,8 +44,8 @@ public class RuleSimulator {
         paramProps2.put("p2", "v3");
         param2.setProperties(paramProps2);
         param2.setThreshold(2);
-        param2.setRangeStart(-1L);
-        param2.setRangeEnd(-1L);
+        param2.setRangeStart(1625279800000L);
+        param2.setRangeEnd(Long.MAX_VALUE);
 
         ArrayList<RuleAtomicParam> countParams = new ArrayList<>();
         countParams.add(param1);
@@ -61,8 +61,8 @@ public class RuleSimulator {
         HashMap<String, String> seqProps1 = new HashMap<>();
         seqProps1.put("p1", "v1");
         seqParam1.setProperties(seqProps1);
-        seqParam1.setRangeStart(-1L);
-        seqParam1.setRangeEnd(-1L);
+        seqParam1.setRangeStart(0L);
+        seqParam1.setRangeEnd(Long.MAX_VALUE);
 
 
         RuleAtomicParam seqParam2 = new RuleAtomicParam();
@@ -70,8 +70,8 @@ public class RuleSimulator {
         HashMap<String, String> seqProps2 = new HashMap<>();
         seqProps2.put("p2", "v3");
         seqParam2.setProperties(seqProps2);
-        seqParam2.setRangeStart(-1L);
-        seqParam2.setRangeEnd(-1L);
+        seqParam2.setRangeStart(0L);
+        seqParam2.setRangeEnd(Long.MAX_VALUE);
 
 
         ArrayList<RuleAtomicParam> seqParams = new ArrayList<>();

@@ -30,6 +30,7 @@ public class UserActionSeqQueryServiceClickHouseImpl implements UserActionSeqQue
         String sql = ruleParam.getActionSeqQuerySql();
         Statement statement = conn.createStatement();
         // 执行查询SQL
+        long start = System.currentTimeMillis();
         ResultSet resultSet = statement.executeQuery(sql);
         // 从返回结果中进行条件判断
         int i = 2;
@@ -40,8 +41,11 @@ public class UserActionSeqQueryServiceClickHouseImpl implements UserActionSeqQue
             }
         }
 
+        long end = System.currentTimeMillis();
         // 返回最大步骤号
         ruleParam.setUserActionSeqQueriedMaxStep(maxStep);
+
+        System.out.println("查询了ClickHouse，耗时 " + (end - start) + " ms, 查询到的最大匹配步骤为： " + maxStep + ", 条件总步骤数为: " + totalStep);
         return maxStep==totalStep;
     }
 }

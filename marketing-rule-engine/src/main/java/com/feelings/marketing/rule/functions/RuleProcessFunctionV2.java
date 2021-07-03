@@ -89,6 +89,8 @@ public class RuleProcessFunctionV2 extends KeyedProcessFunction<String, LogBean,
          * 主逻辑，进行规则触发和计算
          */
         if (ruleParam.getTriggerParam().getEventId().equals(logBean.getEventId())) {
+            System.out.println("规则计算被触发： " + logBean.getDeviceId() + ", " + logBean.getEventId());
+
             // 查询画像条件
             boolean profileIfMatch = userProfileQueryService.judgeProfileCondition(logBean.getEventId(), ruleParam);
             if (!profileIfMatch) return;
