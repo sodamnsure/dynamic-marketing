@@ -23,6 +23,17 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
  *          比如一个条件的查询时间跨度是跨分界点的，2.0直接就交给clickhouse查询
  *              - clickhouse中的数据是批次入库的，有可能在查询时，最近的数据还没入库
  *              - 全部交给clickhouse查询，给clickhouse带来的查询压力比较大
+ *  解决方案：
+ *      一个"叶子节点"总是会包含一个指定的时间范围，并且只会有如下几种模式：
+ *          - 2021-01-10 至 2021-02-18
+ *          - 2021-03-10 至 当前
+ *          - 历史以来 至 2021-03-06
+ *          - 历史以来 至 当前
+ *          - 最近一小时
+ *      可以将一次"原子条件"的查询，从时间上分割成"近期"和"远期"
+ *          - 对于时间跨度属于"近期"的，可以直接通过state缓存近期明细数据来计算
+ *          - 对于时间跨度属于"远期"的，应该在clickhouse中计算
+ *          - 对于时间跨度，横跨"近期"和"远期"的，则应该分段计算，近期部分在state中计算，远期部分在clickhouse中计算，然后将两部分结果整合得到最终结算结果
  */
 public class RuleEngineV2 {
     public static void main(String[] args) throws Exception {
