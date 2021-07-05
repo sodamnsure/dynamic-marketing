@@ -13,6 +13,16 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
  * @Author: sodamnsure
  * @Date: 2021/6/9 3:51 下午
  * @desc: 静态规则引擎版本2主程序
+ * V2版本存在的问题:
+ *  查询策略：
+ *      1. 近期的条件在state中查询
+ *      2. 远期的条件在clickhouse中查询
+ *  存在的问题：
+ *      1. 近期的查询没有问题
+ *      2. 远期有问题：
+ *          比如一个条件的查询时间跨度是跨分界点的，2.0直接就交给clickhouse查询
+ *              - clickhouse中的数据是批次入库的，有可能在查询时，最近的数据还没入库
+ *              - 全部交给clickhouse查询，给clickhouse带来的查询压力比较大
  */
 public class RuleEngineV2 {
     public static void main(String[] args) throws Exception {
