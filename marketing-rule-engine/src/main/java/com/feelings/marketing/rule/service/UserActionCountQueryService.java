@@ -1,6 +1,7 @@
 package com.feelings.marketing.rule.service;
 
 import com.feelings.marketing.rule.pojo.LogBean;
+import com.feelings.marketing.rule.pojo.RuleAtomicParam;
 import com.feelings.marketing.rule.pojo.RuleParam;
 import org.apache.flink.api.common.state.ListState;
 
@@ -12,4 +13,6 @@ import org.apache.flink.api.common.state.ListState;
 public interface UserActionCountQueryService {
 
     boolean queryActionCounts(String deviceId, ListState<LogBean> eventState, RuleParam ruleParam) throws Exception;
+
+    public boolean queryActionCounts(String deviceId, ListState<LogBean> eventState, RuleAtomicParam atomicParam) throws Exception;
 }

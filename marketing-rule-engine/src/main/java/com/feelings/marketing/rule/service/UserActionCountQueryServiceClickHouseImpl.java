@@ -46,4 +46,9 @@ public class UserActionCountQueryServiceClickHouseImpl implements UserActionCoun
         // 如果到达这一句话，说明上面的每一个原子条件查询后都满足规则，那么返回最终结果true
         return true;
     }
+
+    @Override
+    public boolean queryActionCounts(String deviceId, ListState<LogBean> eventState, RuleAtomicParam atomicParam) throws Exception {
+        return false;
+    }
 }
