@@ -28,19 +28,7 @@ public class UserActionCountQueryServiceClickHouseImpl implements UserActionCoun
         List<RuleAtomicParam> userActionCountParams = ruleParam.getUserActionCountParams();
         // 遍历每一个原子条件
         for (RuleAtomicParam ruleAtomicParam : userActionCountParams) {
-            // 对当前的原子条件拼接查询SQL
-            String sql = ClickHouseCountQuerySqlUtil.getSql(deviceId, ruleAtomicParam);
-            // 获取一个ClickHouse的jdbc链接
-            Statement statement = conn.createStatement();
-            ResultSet resultSet = statement.executeQuery(sql);
-
-            // deviceId、cnt
-            while (resultSet.next()) {
-                int realCnt = resultSet.getInt(2);
-                ruleAtomicParam.setRealCounts(realCnt);
-            }
-
-            if (ruleAtomicParam.getRealCounts() < ruleAtomicParam.getThreshold()) return false;
+            queryActionCounts(deviceId,eventState,ruleAtomicParam);
         }
 
         // 如果到达这一句话，说明上面的每一个原子条件查询后都满足规则，那么返回最终结果true
@@ -49,6 +37,24 @@ public class UserActionCountQueryServiceClickHouseImpl implements UserActionCoun
 
     @Override
     public boolean queryActionCounts(String deviceId, ListState<LogBean> eventState, RuleAtomicParam atomicParam) throws Exception {
-        return false;
+
+        // 对当前的原子条件拼接查询SQL
+        String sql = atomicParam.getCountQuerySql();
+        // 获取一个ClickHouse的jdbc链接
+        Statement statement = conn.createStatement();
+        ResultSet resultSet = statement.executeQuery(sql);
+
+        // deviceId、cnt
+        while (resultSet.next()) {
+            int realCnt = resultSet.getInt(2);
+            atomicParam.setRealCounts(atomicParam.getRealCounts() + realCnt);
+        }
+
+        if (atomicParam.getRealCounts() < atomicParam.getThreshold()) {
+            return false;
+        } else {
+            return true;
+        }
+
     }
 }
