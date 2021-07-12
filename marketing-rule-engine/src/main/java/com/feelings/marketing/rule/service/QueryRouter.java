@@ -103,14 +103,20 @@ public class QueryRouter {
         RuleParam copyParamRight = new RuleParam(); // 分界点右边分段的count参数
         RuleParam copyParamLeft = new RuleParam();  // 分界点左边分段的count参数
         for (RuleAtomicParam crossRangeParam : crossRangeParams) {
+            long originRangeStart = crossRangeParam.getRangeStart();
+
             // 将对象的rangeStart换成分界点，去stateService中查询
             crossRangeParam.setRangeStart(splitPoint);
+            boolean b = userActionCountQueryStateService.queryActionCounts(logBean.getDeviceId(), eventState, crossRangeParam);
+            if (b) continue;  // 如果近期条件满足，则不再判断远期情况
+            // 如果上面不满足，则将rangeEnd换成分界点，去clickhouse service查询
+            crossRangeParam.setRangeStart(originRangeStart);
+            crossRangeParam.setRangeEnd(splitPoint);
+            boolean b1 = userActionCountQueryClickHouseService.queryActionCounts(logBean.getDeviceId(), eventState, crossRangeParam);
+
+            if (!b1) return false;
         }
-
-
-
-
-        return false;
+        return true;
     }
 
     // 控制次序条件查询路由
