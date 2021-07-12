@@ -165,6 +165,8 @@ public class RuleProcessFunctionV2 extends KeyedProcessFunction<String, LogBean,
             // 返回
             collector.collect(resultBean);
 
+            // 测试提交数据
+
         }
 
     }
