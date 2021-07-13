@@ -178,6 +178,9 @@ public class QueryRouter {
                 // 查询
                 boolean b2 = userActionSeqQueryStateService.queryActionSeq(logBean.getDeviceId(), eventState, ruleParam);
                 int nearMaxStep = ruleParam.getUserActionSeqQueriedMaxStep();
+
+                // 整合最终结果，塞回参数对象
+                ruleParam.setUserActionSeqQueriedMaxStep(farMaxStep + nearMaxStep);
                 return farMaxStep + nearMaxStep >= totalSteps;
             }
         }
