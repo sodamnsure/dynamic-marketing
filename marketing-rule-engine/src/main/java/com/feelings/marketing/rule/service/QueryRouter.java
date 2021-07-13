@@ -49,7 +49,14 @@ public class QueryRouter {
         return true;
     }
 
-    // 控制次数条件查询路由
+    /**
+     * 控制次数条件查询路由
+     * @param logBean
+     * @param ruleParam
+     * @param eventState
+     * @return
+     * @throws Exception
+     */
     public boolean countConditionQuery(LogBean logBean, RuleParam ruleParam, ListState<LogBean> eventState) throws Exception {
         // 计算查询分界点timestamp
         // 当前时间对小时取整减1
@@ -67,7 +74,7 @@ public class QueryRouter {
             if (userActionCountParam.getRangeEnd() < splitPoint) {
                 // 如果条件结束时间小于分界点，放入远期条件组
                 forwardRangeParams.add(userActionCountParam);
-            } else if (userActionCountParam.getRangeStart() >= splitPoint){
+            } else if (userActionCountParam.getRangeStart() >= splitPoint) {
                 // 如果条件起始时间大于等于分界点，放入近期条件组
                 nearRangeParams.add(userActionCountParam);
             } else {
@@ -119,5 +126,74 @@ public class QueryRouter {
         return true;
     }
 
-    // 控制次序条件查询路由
+    /**
+     * 控制次序条件查询路由
+     * @param logBean
+     * @param ruleParam
+     * @param eventState
+     * @return
+     * @desc: 先查near，得到结果maxStep，如果满足则结束
+     * 如果不满足，则查far得到结果x,如果已满足则结束，如果x不满足，则再在near查条件中去掉x个之步骤后的序列得到结果y,最终返回x+y
+     */
+    public boolean seqConditionQuery(LogBean logBean, RuleParam ruleParam, ListState<LogBean> eventState) throws Exception {
+        // 计算查询分界点timestamp
+        // 当前时间对小时取整减1
+        long splitPoint = DateUtils.addHours(DateUtils.ceiling(new Date(), Calendar.HOUR), -2).getTime();
+
+        // 取出规则中的序列条件
+        List<RuleAtomicParam> userActionSeqParams = ruleParam.getUserActionSeqParams();
+        // 取出规则中的序列的总步骤数
+        int totalSteps = userActionSeqParams.size();
+
+        // 如果序列有内容，才开始计算
+        if (userActionSeqParams != null && userActionSeqParams.size() > 0) {
+            Long rangeStart = userActionSeqParams.get(0).getRangeStart();
+            Long rangeEnd = userActionSeqParams.get(0).getRangeEnd();
+            // 如果条件的时间窗口起始时间大于等于分界点，则在state查询
+            if (rangeStart >= splitPoint ) {
+                boolean b = userActionSeqQueryStateService.queryActionSeq("", eventState, ruleParam);
+                return b;
+            } else if (rangeEnd < splitPoint) {  // 如果条件的时间窗口结束时间小于分界点，则在clickhouse查询
+                boolean b = userActionSeqQueryClickHouseService.queryActionSeq(logBean.getDeviceId(), null, ruleParam);
+                return b;
+            } else { // 否则跨界查询
+                // 重设时间窗口，先查state
+                modifyTimeRange(userActionSeqParams, splitPoint, rangeEnd);
+                boolean b = userActionSeqQueryStateService.queryActionSeq(logBean.getDeviceId(), eventState, ruleParam);
+                if (b) return true;
+
+                // 如果state中没有查询到，则按照正统思路查（先查clickhouse， 再查state，再整合结果）
+                // 更新时间段
+                modifyTimeRange(userActionSeqParams, rangeStart, splitPoint);
+
+                // 交给clickhouse service去查远期部分
+                boolean b1 = userActionSeqQueryClickHouseService.queryActionSeq(logBean.getDeviceId(), eventState, ruleParam);
+                int farMaxStep = ruleParam.getUserActionSeqQueriedMaxStep();
+                if (b1) return true;
+
+                // 如果远期部分不足以满足整个条件，则将条件截短
+                modifyTimeRange(userActionSeqParams, splitPoint, rangeEnd);
+                // 截短序列
+                ruleParam.setUserActionSeqParams(userActionSeqParams.subList(farMaxStep, userActionSeqParams.size()));
+                // 查询
+                boolean b2 = userActionSeqQueryStateService.queryActionSeq(logBean.getDeviceId(), eventState, ruleParam);
+                int nearMaxStep = ruleParam.getUserActionSeqQueriedMaxStep();
+                return farMaxStep + nearMaxStep >= totalSteps;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * 更新条件时间窗口起始点的工具方法
+     * @param userActionSeqParams
+     * @param newStart
+     * @param newEnd
+     */
+    private void modifyTimeRange(List<RuleAtomicParam> userActionSeqParams, long newStart, long newEnd) {
+        for (RuleAtomicParam userActionSeqParam : userActionSeqParams) {
+            userActionSeqParam.setRangeStart(newStart);
+            userActionSeqParam.setRangeEnd(newEnd);
+        }
+    }
 }
