@@ -90,7 +90,7 @@ public class ActionLogGen {
 
                         // 在run方法中是不能抛异常的
                         try {
-                            Thread.sleep(RandomUtils.nextInt(2000, 3000));
+                            Thread.sleep(RandomUtils.nextInt(100, 200));
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }

@@ -73,6 +73,8 @@ public class RuleProcessFunctionV3 extends KeyedProcessFunction<String, LogBean,
             boolean b = queryRouter.profileQuery(logBean, ruleParam);
             if (!b) return;
 
+            System.out.println("画像条件满足");
+
             // 先查询序列条件，因为序列条件比较难满足，这样就减少了查询次数类条件的次数
             boolean b1 = queryRouter.seqConditionQuery(logBean, ruleParam, eventState);
             if (!b1) return;

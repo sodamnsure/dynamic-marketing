@@ -43,6 +43,8 @@ public class QueryRouter {
 
     // 控制画像条件查询路由
     public boolean profileQuery(LogBean logBean, RuleParam ruleParam) {
+        System.out.println("开始查询画像条件");
+
         // 查询画像条件
         boolean profileIfMatch = userProfileQueryService.judgeProfileCondition(logBean.getEventId(), ruleParam);
         if (!profileIfMatch) return false;
