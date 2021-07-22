@@ -2,7 +2,6 @@ package com.feelings.marketing.rule.service;
 
 import com.feelings.marketing.rule.pojo.BufferAvailableLevel;
 import com.feelings.marketing.rule.pojo.BufferResult;
-import org.apache.hadoop.hbase.io.TimeRange;
 import redis.clients.jedis.Jedis;
 
 /**
