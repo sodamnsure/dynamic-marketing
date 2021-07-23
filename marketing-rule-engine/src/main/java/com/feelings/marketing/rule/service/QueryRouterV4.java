@@ -187,14 +187,51 @@ public class QueryRouterV4 {
      * 如果不满足，则查far得到结果x,如果已满足则结束，如果x不满足，则再在near查条件中去掉x个之步骤后的序列得到结果y,最终返回x+y
      */
     public boolean seqConditionQuery(LogBean logBean, RuleParam ruleParam, ListState<LogBean> eventState) throws Exception {
+        // 取出规则中的序列条件
+        List<RuleAtomicParam> userActionSeqParams = ruleParam.getUserActionSeqParams();
+
+        Long paramStart = userActionSeqParams.get(0).getRangeStart();
+        Long paramEnd = userActionSeqParams.get(0).getRangeEnd();
+        // 取出规则中的序列的总步骤数
+        Integer totalSteps = userActionSeqParams.size();
+
+        /**
+         * 处理缓存查询
+         *
+         *  依据查询后的结果，如果已经完成匹配，从规则中直接剔除
+         *  如果是部分有效，则将条件中的时间窗口起始点更新为缓存有效窗口的结束点
+         */
+        // 拼接bufferKey
+        String bufferKey = RuleCalcUtil.getBufferKey(logBean.getDeviceId(), userActionSeqParams);
+
+        BufferResult bufferResult = bufferManager.getBufferData(bufferKey, paramStart, paramEnd, totalSteps);
+
+        // 判断有效性
+        switch (bufferResult.getBufferAvailableLevel()) {
+
+            case PARTIAL_AVL:
+                // 如果是部分有效，则更新条件的窗口起始点
+                userActionSeqParams.get(0).setRangeStart(bufferResult.getBufferRangeEnd());
+                // 将缓存value值，放入参数对象的maxStep中
+                ruleParam.setUserActionSeqQueriedMaxStep(bufferResult.getBufferValue());
+                // 截短条件序列
+                List<RuleAtomicParam> newSeqList = userActionSeqParams.subList(bufferResult.getBufferValue(), totalSteps);
+                ruleParam.setUserActionSeqParams(newSeqList);
+                break;
+
+            case UN_AVL:
+                break;
+            case WHOLE_AVL:
+                return true;
+
+        }
+
+
         // 计算查询分界点timestamp
         // 当前时间对小时取整减1
         long splitPoint = DateUtils.addHours(DateUtils.ceiling(new Date(), Calendar.HOUR), -2).getTime();
 
-        // 取出规则中的序列条件
-        List<RuleAtomicParam> userActionSeqParams = ruleParam.getUserActionSeqParams();
-        // 取出规则中的序列的总步骤数
-        int totalSteps = userActionSeqParams.size();
+        userActionSeqParams = ruleParam.getUserActionSeqParams();
 
         // 如果序列有内容，才开始计算
         if (userActionSeqParams != null && userActionSeqParams.size() > 0) {

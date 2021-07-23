@@ -31,7 +31,7 @@ public class UserActionSeqQueryServiceStateImpl implements UserActionSeqQuerySer
         // 调用helper方法统计实际匹配的最大步骤号
         int maxStep = queryActionSeqHelper(logBeans, userActionSeqParams);
         // 将maxStep丢回规则参数对象，以便调用者可以根据需要获取到这个最大匹配步骤号
-        ruleParam.setUserActionSeqQueriedMaxStep(maxStep);
+        ruleParam.setUserActionSeqQueriedMaxStep(ruleParam.getUserActionSeqQueriedMaxStep() + maxStep);
         // 然后判断整个序列条件是否满足：真实最大匹配步骤是否等于条件的步骤数
         return maxStep == userActionSeqParams.size();
     }

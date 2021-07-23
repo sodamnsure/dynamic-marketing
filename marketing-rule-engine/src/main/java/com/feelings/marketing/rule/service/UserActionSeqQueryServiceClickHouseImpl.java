@@ -43,7 +43,7 @@ public class UserActionSeqQueryServiceClickHouseImpl implements UserActionSeqQue
 
         long end = System.currentTimeMillis();
         // 返回最大步骤号
-        ruleParam.setUserActionSeqQueriedMaxStep(maxStep);
+        ruleParam.setUserActionSeqQueriedMaxStep(ruleParam.getUserActionSeqQueriedMaxStep() + maxStep);
 
         System.out.println("查询了ClickHouse，耗时 " + (end - start) + " ms, 查询到的最大匹配步骤为： " + maxStep + ", 条件总步骤数为: " + totalStep);
         return maxStep==totalStep;

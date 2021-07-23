@@ -4,6 +4,7 @@ import com.feelings.marketing.rule.pojo.LogBean;
 import com.feelings.marketing.rule.pojo.RuleAtomicParam;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -63,4 +64,23 @@ public class RuleCalcUtil {
         }
         return sb.toString();
     }
+
+    public static String getBufferKey(String deviceId, List<RuleAtomicParam> ruleAtomicParams) {
+        // deviceId-EVENT-p1-v1-p2-v2
+        StringBuffer sb = new StringBuffer();
+        sb.append(deviceId).append("-");
+
+        for (RuleAtomicParam ruleAtomicParam : ruleAtomicParams) {
+            sb.append("-").append(ruleAtomicParam.getEventId());
+            HashMap<String, String> properties = ruleAtomicParam.getProperties();
+            Set<Map.Entry<String, String>> entries = properties.entrySet();
+            for (Map.Entry<String, String> entry : entries) {
+                sb.append("-").append(entry.getKey()).append("-").append(entry.getValue());
+            }
+        }
+
+        return sb.toString();
+    }
+
+
 }
