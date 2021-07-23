@@ -49,4 +49,18 @@ public class RuleCalcUtil {
         Long rangeEnd = eventParam.getRangeEnd();
         return b && eventBean.getTimeStamp() >= (rangeStart == -1 ? 0 : rangeStart) && eventBean.getTimeStamp() <= (rangeEnd == -1 ? Long.MAX_VALUE : rangeEnd);
     }
+
+
+    public static String getBufferKey(String deviceId, RuleAtomicParam ruleAtomicParam) {
+        // deviceId-EVENT-p1-v1-p2-v2
+        StringBuffer sb = new StringBuffer();
+        sb.append(deviceId).append("-").append(ruleAtomicParam.getEventId());
+
+        HashMap<String, String> properties = ruleAtomicParam.getProperties();
+        Set<Map.Entry<String, String>> entries = properties.entrySet();
+        for (Map.Entry<String, String> entry : entries) {
+            sb.append("-").append(entry.getKey()).append("-").append(entry.getValue());
+        }
+        return sb.toString();
+    }
 }
