@@ -2,7 +2,6 @@ package com.feelings.marketing.rule.functions;
 
 import com.feelings.marketing.rule.pojo.LogBean;
 import com.feelings.marketing.rule.pojo.ResultBean;
-import com.feelings.marketing.rule.pojo.RuleAtomicParam;
 import com.feelings.marketing.rule.pojo.RuleParam;
 import com.feelings.marketing.rule.service.*;
 import com.feelings.marketing.rule.utils.RuleSimulator;
@@ -14,9 +13,6 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * @Author: sodamnsure
  * @Date: 2021/6/16 5:51 下午
@@ -26,12 +22,12 @@ public class RuleProcessFunctionV3 extends KeyedProcessFunction<String, LogBean,
     RuleParam ruleParam;
     ListState<LogBean> eventState;
 
-    QueryRouter queryRouter;
+    QueryRouterV3 queryRouterV3;
 
     @Override
     public void open(Configuration parameters) throws Exception {
         // 构造一个查询路由控制器
-        queryRouter = new QueryRouter();
+        queryRouterV3 = new QueryRouterV3();
 
         /**
          * 获取规则参数
@@ -70,16 +66,16 @@ public class RuleProcessFunctionV3 extends KeyedProcessFunction<String, LogBean,
         if (ruleParam.getTriggerParam().getEventId().equals(logBean.getEventId())) {
             System.out.println("规则计算被触发： " + logBean.getDeviceId() + ", " + logBean.getEventId());
 
-            boolean b = queryRouter.profileQuery(logBean, ruleParam);
+            boolean b = queryRouterV3.profileQuery(logBean, ruleParam);
             if (!b) return;
 
             System.out.println("画像条件满足");
 
             // 先查询序列条件，因为序列条件比较难满足，这样就减少了查询次数类条件的次数
-            boolean b1 = queryRouter.seqConditionQuery(logBean, ruleParam, eventState);
+            boolean b1 = queryRouterV3.seqConditionQuery(logBean, ruleParam, eventState);
             if (!b1) return;
 
-            boolean b2 = queryRouter.countConditionQuery(logBean, ruleParam, eventState);
+            boolean b2 = queryRouterV3.countConditionQuery(logBean, ruleParam, eventState);
             if (!b2) return;
 
             // 输出一个规则匹配成功的结果

@@ -16,7 +16,7 @@ import java.util.List;
  * @Date: 2021/7/9 4:33 下午
  * @desc: 查询路由模块
  */
-public class QueryRouter {
+public class QueryRouterV3 {
     private UserProfileQueryService userProfileQueryService;
 
     private UserActionCountQueryService userActionCountQueryStateService;
@@ -25,7 +25,7 @@ public class QueryRouter {
     private UserActionCountQueryService userActionCountQueryClickHouseService;
     private UserActionSeqQueryService userActionSeqQueryClickHouseService;
 
-    public QueryRouter() throws Exception {
+    public QueryRouterV3() throws Exception {
         userProfileQueryService = new UserProfileQueryServiceHbaseImpl();
 
         /**
