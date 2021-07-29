@@ -37,6 +37,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
  */
 public class RuleEngineV4 {
     public static void main(String[] args) throws Exception {
+        // 版本V4打标
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(new Configuration());
 
         // 添加kafka消费source
