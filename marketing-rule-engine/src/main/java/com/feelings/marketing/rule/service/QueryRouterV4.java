@@ -17,6 +17,10 @@ import java.util.List;
  * @Author: sodamnsure
  * @Date: 2021/7/9 4:33 下午
  * @desc: 查询路由模块（加入缓存后的版本）
+ * 核心计算入口类:
+ *  1. 先用缓存管理器去查询缓存数据
+ *  2. 然后再根据情况调用各类服务去计算
+ *  3. 还要将计算结果更新到缓存中
  */
 public class QueryRouterV4 {
     // 画像查询服务
@@ -33,6 +37,11 @@ public class QueryRouterV4 {
     // 缓存管理器
     BufferManager bufferManager;
 
+    /**
+     * 构造方法
+     * 创建各类服务实例和缓存管理实例
+     * @throws Exception
+     */
     public QueryRouterV4() throws Exception {
         userProfileQueryService = new UserProfileQueryServiceHbaseImpl();
 
@@ -55,7 +64,12 @@ public class QueryRouterV4 {
 
     }
 
-    // 控制画像条件查询路由
+    /**
+     * 控制画像条件查询路由
+     * @param logBean
+     * @param ruleParam
+     * @return
+     */
     public boolean profileQuery(LogBean logBean, RuleParam ruleParam) {
         System.out.println("开始查询画像条件");
 
