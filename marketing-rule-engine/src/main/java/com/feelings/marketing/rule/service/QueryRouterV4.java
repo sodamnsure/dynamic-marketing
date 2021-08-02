@@ -99,28 +99,7 @@ public class QueryRouterV4 {
          * 依据查询后结果，如果已经完全匹配的，从规则中直接剔除
          * 如果部分有效，则将条件的时间窗口起始点更新为缓存有效窗口的结束点
          */
-        for (int i = 0; i < userActionCountParams.size(); i++) {
-            // 拼接bufferKey
-            String bufferKey = RuleCalcUtil.getBufferKey(logBean.getDeviceId(), userActionCountParams.get(i));
-            // 从redis中取数据
-            BufferResult bufferResult = bufferManager.getBufferData(bufferKey, userActionCountParams.get(i).getRangeStart(), userActionCountParams.get(i).getRangeEnd(), userActionCountParams.get(i).getThreshold());
-            // 判断有效性
-            switch (bufferResult.getBufferAvailableLevel()) {
-
-                case PARTIAL_AVL:
-                    // 如果是部分有效，则更新条件的窗口起始点
-                    userActionCountParams.get(i).setRangeStart(bufferResult.getBufferRangeEnd());
-                    // 将缓存value值，放入参数对象的真实值中
-                    userActionCountParams.get(i).setRealCounts(bufferResult.getBufferValue());
-                    break;
-                case WHOLE_AVL:
-                    // 如果完全有效，则剔除条件
-                    userActionCountParams.remove(i);
-                    break;
-                case UN_AVL:
-
-            }
-        }
+        updateRuleParamByBufferResult(logBean, userActionCountParams);
 
 
         // 计算查询分界点timestamp
@@ -133,19 +112,8 @@ public class QueryRouterV4 {
         ArrayList<RuleAtomicParam> nearRangeParams = new ArrayList<>(); // 只查近期的条件组
         ArrayList<RuleAtomicParam> crossRangeParams = new ArrayList<>(); // 跨界条件组
 
-        // 条件分组
-        for (RuleAtomicParam userActionCountParam : userActionCountParams) {
-            if (userActionCountParam.getRangeEnd() < splitPoint) {
-                // 如果条件结束时间小于分界点，放入远期条件组
-                forwardRangeParams.add(userActionCountParam);
-            } else if (userActionCountParam.getRangeStart() >= splitPoint) {
-                // 如果条件起始时间大于等于分界点，放入近期条件组
-                nearRangeParams.add(userActionCountParam);
-            } else {
-                // 否则，放入跨界条件组
-                crossRangeParams.add(userActionCountParam);
-            }
-        }
+        // 调用方法划分
+        allocateParamList(userActionCountParams, splitPoint, forwardRangeParams, nearRangeParams, crossRangeParams);
 
         /**
          * 查询近期条件组
@@ -158,15 +126,6 @@ public class QueryRouterV4 {
             if (!countMatch) return false;
         }
 
-        /**
-         * 查询远期条件组
-         */
-        if (forwardRangeParams.size() > 0) {
-            // 将规则总参数中对象中的"次数类条件"覆盖成：远期条件组
-            ruleParam.setUserActionCountParams(forwardRangeParams);
-            boolean b = userActionCountQueryClickHouseService.queryActionCounts(logBean.getDeviceId(), null, ruleParam);
-            if (!b) return false;
-        }
 
         /**
          * 查询跨界条件组
@@ -187,6 +146,17 @@ public class QueryRouterV4 {
 
             if (!b1) return false;
         }
+
+        /**
+         * 查询远期条件组
+         */
+        if (forwardRangeParams.size() > 0) {
+            // 将规则总参数中对象中的"次数类条件"覆盖成：远期条件组
+            ruleParam.setUserActionCountParams(forwardRangeParams);
+            boolean b = userActionCountQueryClickHouseService.queryActionCounts(logBean.getDeviceId(), null, ruleParam);
+            if (!b) return false;
+        }
+
         return true;
     }
 
@@ -300,6 +270,64 @@ public class QueryRouterV4 {
         for (RuleAtomicParam userActionSeqParam : userActionSeqParams) {
             userActionSeqParam.setRangeStart(newStart);
             userActionSeqParam.setRangeEnd(newEnd);
+        }
+    }
+
+    /**
+     * 根据缓存，并根据缓存结果情况，更新原始规则条件
+     * 1. 缩短条件的窗口
+     * 2. 剔除条件
+     * 3. 什么都不错
+     * @param logBean 待处理条件
+     * @param userActionCountParams 次数类条件list
+     */
+    private void updateRuleParamByBufferResult(LogBean logBean, List<RuleAtomicParam> userActionCountParams) {
+        for (int i = 0; i < userActionCountParams.size(); i++) {
+            RuleAtomicParam countParam = userActionCountParams.get(i);
+            // 拼接bufferKey
+            String bufferKey = RuleCalcUtil.getBufferKey(logBean.getDeviceId(), countParam);
+            // 从redis中取数据
+            BufferResult bufferResult = bufferManager.getBufferData(bufferKey, countParam);
+            // 判断有效性
+            switch (bufferResult.getBufferAvailableLevel()) {
+
+                case PARTIAL_AVL:
+                    // 如果是部分有效，则更新规则条件的窗口起始点
+                    countParam.setRangeStart(bufferResult.getBufferRangeEnd());
+                    // 将缓存value值，放入参数对象的真实值中
+                    countParam.setRealCounts(bufferResult.getBufferValue());
+                    break;
+                case WHOLE_AVL:
+                    // 如果完全有效，则剔除条件
+                    userActionCountParams.remove(i);
+                    break;
+                case UN_AVL:
+
+            }
+        }
+    }
+
+
+    /**
+     *
+     * @param userActionCountParams 初始条件list
+     * @param splitPoint 时间分界点
+     * @param forwardRangeParams 远期条件组
+     * @param nearRangeParams 近期条件组
+     * @param crossRangeParams 跨界条件组
+     */
+    private void allocateParamList(List<RuleAtomicParam> userActionCountParams, long splitPoint, ArrayList<RuleAtomicParam> forwardRangeParams, ArrayList<RuleAtomicParam> nearRangeParams, ArrayList<RuleAtomicParam> crossRangeParams) {
+        for (RuleAtomicParam userActionCountParam : userActionCountParams) {
+            if (userActionCountParam.getRangeEnd() < splitPoint) {
+                // 如果条件结束时间小于分界点，放入远期条件组
+                forwardRangeParams.add(userActionCountParam);
+            } else if (userActionCountParam.getRangeStart() >= splitPoint) {
+                // 如果条件起始时间大于等于分界点，放入近期条件组
+                nearRangeParams.add(userActionCountParam);
+            } else {
+                // 否则，放入跨界条件组
+                crossRangeParams.add(userActionCountParam);
+            }
         }
     }
 }

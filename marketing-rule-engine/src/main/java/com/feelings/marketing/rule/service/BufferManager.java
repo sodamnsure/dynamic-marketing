@@ -2,6 +2,7 @@ package com.feelings.marketing.rule.service;
 
 import com.feelings.marketing.rule.pojo.BufferAvailableLevel;
 import com.feelings.marketing.rule.pojo.BufferResult;
+import com.feelings.marketing.rule.pojo.RuleAtomicParam;
 import redis.clients.jedis.Jedis;
 
 /**
@@ -16,7 +17,25 @@ public class BufferManager {
         jedis = new Jedis("feelings", 6379);
     }
 
-    // 获取缓存中的数据
+    /**
+     * 获取缓存数据并返回
+     * @param bufferKey 缓存key
+     * @param ruleAtomicParam 规则原子条件对象
+     * @return 缓存数据
+     */
+    public BufferResult getBufferData(String bufferKey, RuleAtomicParam ruleAtomicParam) {
+        BufferResult bufferResult = getBufferData(bufferKey, ruleAtomicParam.getRangeStart(), ruleAtomicParam.getRangeEnd(), ruleAtomicParam.getThreshold());
+        return bufferResult;
+    }
+
+    /**
+     * 获取缓存数据并返回
+     * @param bufferKey 缓存key
+     * @param paramRangeStart 缓存数据时间start
+     * @param paramRangeEnd 缓存数据时间end
+     * @param threshold 缓存数据对应查询条件的阈值
+     * @return 缓存数据结果
+     */
     public BufferResult getBufferData(String bufferKey, Long paramRangeStart, Long paramRangeEnd, int threshold) {
         BufferResult bufferResult = new BufferResult();
 
