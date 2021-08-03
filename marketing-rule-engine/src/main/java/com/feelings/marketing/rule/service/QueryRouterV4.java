@@ -283,6 +283,7 @@ public class QueryRouterV4 {
      */
     private void updateRuleParamByBufferResult(LogBean logBean, List<RuleAtomicParam> userActionCountParams) {
         for (int i = 0; i < userActionCountParams.size(); i++) {
+            // 从条件列表中取出条件i
             RuleAtomicParam countParam = userActionCountParams.get(i);
             // 拼接bufferKey
             String bufferKey = RuleCalcUtil.getBufferKey(logBean.getDeviceId(), countParam);
@@ -290,16 +291,17 @@ public class QueryRouterV4 {
             BufferResult bufferResult = bufferManager.getBufferData(bufferKey, countParam);
             // 判断有效性
             switch (bufferResult.getBufferAvailableLevel()) {
-
+                // 如果部分有效
                 case PARTIAL_AVL:
-                    // 如果是部分有效，则更新规则条件的窗口起始点
+                    // 则更新规则条件的窗口起始点
                     countParam.setRangeStart(bufferResult.getBufferRangeEnd());
                     // 将缓存value值，放入参数对象的真实值中
                     countParam.setRealCounts(bufferResult.getBufferValue());
                     break;
+                // 如果完全有效，则剔除条件
                 case WHOLE_AVL:
-                    // 如果完全有效，则剔除条件
                     userActionCountParams.remove(i);
+                    i--;
                     break;
                 case UN_AVL:
 
