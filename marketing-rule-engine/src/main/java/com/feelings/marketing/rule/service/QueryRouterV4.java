@@ -18,9 +18,9 @@ import java.util.List;
  * @Date: 2021/7/9 4:33 下午
  * @desc: 查询路由模块（加入缓存后的版本）
  * 核心计算入口类:
- *  1. 先用缓存管理器去查询缓存数据
- *  2. 然后再根据情况调用各类服务去计算
- *  3. 还要将计算结果更新到缓存中
+ * 1. 先用缓存管理器去查询缓存数据
+ * 2. 然后再根据情况调用各类服务去计算
+ * 3. 还要将计算结果更新到缓存中
  */
 public class QueryRouterV4 {
     // 画像查询服务
@@ -40,6 +40,7 @@ public class QueryRouterV4 {
     /**
      * 构造方法
      * 创建各类服务实例和缓存管理实例
+     *
      * @throws Exception
      */
     public QueryRouterV4() throws Exception {
@@ -66,6 +67,7 @@ public class QueryRouterV4 {
 
     /**
      * 控制画像条件查询路由
+     *
      * @param logBean
      * @param ruleParam
      * @return
@@ -173,7 +175,10 @@ public class QueryRouterV4 {
     public boolean seqConditionQuery(LogBean logBean, RuleParam ruleParam, ListState<LogBean> eventState) throws Exception {
         // 取出规则中的序列条件
         List<RuleAtomicParam> userActionSeqParams = ruleParam.getUserActionSeqParams();
+        // 如果序列条件为空，则直接返回true
+        if (userActionSeqParams == null || userActionSeqParams.size() < 1) return true;
 
+        // 取出序列条件相关参数，取得条件的初始时间、结束时间和总步骤数
         Long paramStart = userActionSeqParams.get(0).getRangeStart();
         Long paramEnd = userActionSeqParams.get(0).getRangeEnd();
         // 取出规则中的序列的总步骤数
@@ -192,8 +197,7 @@ public class QueryRouterV4 {
 
         // 判断有效性
         switch (bufferResult.getBufferAvailableLevel()) {
-
-            case PARTIAL_AVL:
+            case PARTIAL_AVL: // 缓存部分有效，则设置maxStep到参数中,并截短条件序列及条件时间窗口
                 // 如果是部分有效，则更新条件的窗口起始点
                 userActionSeqParams.get(0).setRangeStart(bufferResult.getBufferRangeEnd());
                 // 将缓存value值，放入参数对象的maxStep中
@@ -202,7 +206,6 @@ public class QueryRouterV4 {
                 List<RuleAtomicParam> newSeqList = userActionSeqParams.subList(bufferResult.getBufferValue(), totalSteps);
                 ruleParam.setUserActionSeqParams(newSeqList);
                 break;
-
             case UN_AVL:
                 break;
             case WHOLE_AVL:
@@ -225,35 +228,44 @@ public class QueryRouterV4 {
             if (rangeStart >= splitPoint) {
                 boolean b = userActionSeqQueryStateService.queryActionSeq("", eventState, ruleParam);
                 return b;
-            } else if (rangeEnd < splitPoint) {  // 如果条件的时间窗口结束时间小于分界点，则在clickhouse查询
-                boolean b = userActionSeqQueryClickHouseService.queryActionSeq(logBean.getDeviceId(), null, ruleParam);
-                return b;
-            } else { // 否则跨界查询
+            } else if (rangeStart < splitPoint && rangeEnd > splitPoint) { // 否则跨界查询
                 // 重设时间窗口，先查state
                 modifyTimeRange(userActionSeqParams, splitPoint, rangeEnd);
-                boolean b = userActionSeqQueryStateService.queryActionSeq(logBean.getDeviceId(), eventState, ruleParam);
-                if (b) return true;
+                // 
+                int bufferValue = ruleParam.getUserActionSeqQueriedMaxStep();
+                userActionSeqQueryStateService.queryActionSeq(logBean.getDeviceId(), eventState, ruleParam);
+                if (ruleParam.getUserActionSeqQueriedMaxStep() >= totalSteps) {
+                    return true;
+                } else {
+                    // 将参数中的maxStep恢复到缓存查完后的值
+                    ruleParam.setUserActionSeqQueriedMaxStep(bufferValue);
+                }
 
                 // 如果state中没有查询到，则按照正统思路查（先查clickhouse， 再查state，再整合结果）
                 // 更新时间段
                 modifyTimeRange(userActionSeqParams, rangeStart, splitPoint);
 
                 // 交给clickhouse service去查远期部分
-                boolean b1 = userActionSeqQueryClickHouseService.queryActionSeq(logBean.getDeviceId(), eventState, ruleParam);
+                userActionSeqQueryClickHouseService.queryActionSeq(logBean.getDeviceId(), eventState, ruleParam);
                 int farMaxStep = ruleParam.getUserActionSeqQueriedMaxStep();
-                if (b1) return true;
+                if (ruleParam.getUserActionSeqQueriedMaxStep() >= totalSteps) {
+                    return true;
+                }
 
                 // 如果远期部分不足以满足整个条件，则将条件截短
                 modifyTimeRange(userActionSeqParams, splitPoint, rangeEnd);
                 // 截短序列
                 ruleParam.setUserActionSeqParams(userActionSeqParams.subList(farMaxStep, userActionSeqParams.size()));
                 // 查询
-                boolean b2 = userActionSeqQueryStateService.queryActionSeq(logBean.getDeviceId(), eventState, ruleParam);
+                userActionSeqQueryStateService.queryActionSeq(logBean.getDeviceId(), eventState, ruleParam);
                 int nearMaxStep = ruleParam.getUserActionSeqQueriedMaxStep();
 
                 // 整合最终结果，塞回参数对象
                 ruleParam.setUserActionSeqQueriedMaxStep(farMaxStep + nearMaxStep);
                 return farMaxStep + nearMaxStep >= totalSteps;
+            } else {  // 如果条件的时间窗口结束时间小于分界点，则在clickhouse查询
+                boolean b = userActionSeqQueryClickHouseService.queryActionSeq(logBean.getDeviceId(), null, ruleParam);
+                return b;
             }
         }
         return true;
@@ -278,7 +290,8 @@ public class QueryRouterV4 {
      * 1. 缩短条件的窗口
      * 2. 剔除条件
      * 3. 什么都不错
-     * @param logBean 待处理条件
+     *
+     * @param logBean               待处理条件
      * @param userActionCountParams 次数类条件list
      */
     private void updateRuleParamByBufferResult(LogBean logBean, List<RuleAtomicParam> userActionCountParams) {
@@ -311,12 +324,11 @@ public class QueryRouterV4 {
 
 
     /**
-     *
      * @param userActionCountParams 初始条件list
-     * @param splitPoint 时间分界点
-     * @param forwardRangeParams 远期条件组
-     * @param nearRangeParams 近期条件组
-     * @param crossRangeParams 跨界条件组
+     * @param splitPoint            时间分界点
+     * @param forwardRangeParams    远期条件组
+     * @param nearRangeParams       近期条件组
+     * @param crossRangeParams      跨界条件组
      */
     private void allocateParamList(List<RuleAtomicParam> userActionCountParams, long splitPoint, ArrayList<RuleAtomicParam> forwardRangeParams, ArrayList<RuleAtomicParam> nearRangeParams, ArrayList<RuleAtomicParam> crossRangeParams) {
         for (RuleAtomicParam userActionCountParam : userActionCountParams) {
