@@ -74,9 +74,16 @@ public class QueryRouterV4 {
      */
     public boolean profileQuery(LogBean logBean, RuleParam ruleParam) {
         System.out.println("开始查询画像条件");
+        /*
+        TODO: 从缓存中获取结果（如果HBASE集群能力强，可不将画像查询结果放入缓存）
+         */
 
         // 查询画像条件
         boolean profileIfMatch = userProfileQueryService.judgeProfileCondition(logBean.getEventId(), ruleParam);
+
+        /*
+        TODO: 将查询结果插入缓存（如果HBASE集群能力强，可不将画像查询结果放入缓存）
+         */
         if (!profileIfMatch) return false;
         return true;
     }
@@ -125,6 +132,10 @@ public class QueryRouterV4 {
             ruleParam.setUserActionCountParams(nearRangeParams);
             // 交给stateService，对这一组条件进行计算
             boolean countMatch = userActionCountQueryStateService.queryActionCounts("", eventState, ruleParam);
+            for (RuleAtomicParam ruleAtomicParam : nearRangeParams) {
+                String bufferKey = RuleCalcUtil.getBufferKey(logBean.getDeviceId(), ruleAtomicParam);
+                bufferManager.putBufferData(bufferKey, ruleAtomicParam.getRealCounts(), ruleAtomicParam.getRangeStart(), ruleAtomicParam.getRangeEnd());
+            }
             if (!countMatch) return false;
         }
 
@@ -136,16 +147,21 @@ public class QueryRouterV4 {
         RuleParam copyParamLeft = new RuleParam();  // 分界点左边分段的count参数
         for (RuleAtomicParam crossRangeParam : crossRangeParams) {
             long originRangeStart = crossRangeParam.getRangeStart();
+            long originRangeEnd = crossRangeParam.getRangeEnd();
+            String bufferKey = RuleCalcUtil.getBufferKey(logBean.getDeviceId(), crossRangeParam);
 
             // 将对象的rangeStart换成分界点，去stateService中查询
             crossRangeParam.setRangeStart(splitPoint);
             boolean b = userActionCountQueryStateService.queryActionCounts(logBean.getDeviceId(), eventState, crossRangeParam);
-            if (b) continue;  // 如果近期条件满足，则不再判断远期情况
+            if (b) {
+                bufferManager.putBufferData(bufferKey, crossRangeParam.getRealCounts(), crossRangeParam.getRangeStart(), crossRangeParam.getRangeEnd());
+                continue;  // 如果近期条件满足，则不再判断远期情况
+            }
             // 如果上面不满足，则将rangeEnd换成分界点，去clickhouse service查询
             crossRangeParam.setRangeStart(originRangeStart);
             crossRangeParam.setRangeEnd(splitPoint);
             boolean b1 = userActionCountQueryClickHouseService.queryActionCounts(logBean.getDeviceId(), eventState, crossRangeParam);
-
+            bufferManager.putBufferData(bufferKey, crossRangeParam.getRealCounts(), originRangeStart, originRangeEnd);
             if (!b1) return false;
         }
 
@@ -156,6 +172,10 @@ public class QueryRouterV4 {
             // 将规则总参数中对象中的"次数类条件"覆盖成：远期条件组
             ruleParam.setUserActionCountParams(forwardRangeParams);
             boolean b = userActionCountQueryClickHouseService.queryActionCounts(logBean.getDeviceId(), null, ruleParam);
+            for (RuleAtomicParam ruleAtomicParam : forwardRangeParams) {
+                String bufferKey = RuleCalcUtil.getBufferKey(logBean.getDeviceId(), ruleAtomicParam);
+                bufferManager.putBufferData(bufferKey, ruleAtomicParam.getRealCounts(), ruleAtomicParam.getRangeStart(), ruleAtomicParam.getRangeEnd());
+            }
             if (!b) return false;
         }
 
