@@ -182,7 +182,7 @@ public class QueryRouterV4 {
         Long paramStart = userActionSeqParams.get(0).getRangeStart();
         Long paramEnd = userActionSeqParams.get(0).getRangeEnd();
         // 取出规则中的序列的总步骤数
-        Integer totalSteps = userActionSeqParams.size();
+        int totalSteps = userActionSeqParams.size();
 
         /**
          * 处理缓存查询
