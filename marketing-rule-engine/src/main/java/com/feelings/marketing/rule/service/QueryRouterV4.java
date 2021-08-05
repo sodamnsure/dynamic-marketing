@@ -7,6 +7,7 @@ import com.feelings.marketing.rule.pojo.RuleParam;
 import com.feelings.marketing.rule.utils.RuleCalcUtil;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.flink.api.common.state.ListState;
+import org.junit.Rule;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -230,7 +231,6 @@ public class QueryRouterV4 {
                 break;
             case WHOLE_AVL:
                 return true;
-
         }
 
 
@@ -242,19 +242,24 @@ public class QueryRouterV4 {
 
         // 如果序列有内容，才开始计算
         if (userActionSeqParams != null && userActionSeqParams.size() > 0) {
-            Long rangeStart = userActionSeqParams.get(0).getRangeStart();
-            Long rangeEnd = userActionSeqParams.get(0).getRangeEnd();
+            Long originRangeStart = userActionSeqParams.get(0).getRangeStart();
+            Long originRangeEnd = userActionSeqParams.get(0).getRangeEnd();
             // 如果条件的时间窗口起始时间大于等于分界点，则在state查询
-            if (rangeStart >= splitPoint) {
+            if (originRangeStart >= splitPoint) {
                 boolean b = userActionSeqQueryStateService.queryActionSeq("", eventState, ruleParam);
+                String bufferKey1 = RuleCalcUtil.getBufferKey(logBean.getDeviceId(), ruleParam.getUserActionSeqParams());
+                bufferManager.putBufferData(bufferKey1, ruleParam.getUserActionSeqQueriedMaxStep(), originRangeStart, originRangeEnd);
                 return b;
-            } else if (rangeStart < splitPoint && rangeEnd > splitPoint) { // 否则跨界查询
+            } else if (originRangeStart < splitPoint && originRangeEnd > splitPoint) { // 否则跨界查询
                 // 重设时间窗口，先查state
-                modifyTimeRange(userActionSeqParams, splitPoint, rangeEnd);
+                modifyTimeRange(userActionSeqParams, splitPoint, originRangeEnd);
                 // 
                 int bufferValue = ruleParam.getUserActionSeqQueriedMaxStep();
                 userActionSeqQueryStateService.queryActionSeq(logBean.getDeviceId(), eventState, ruleParam);
                 if (ruleParam.getUserActionSeqQueriedMaxStep() >= totalSteps) {
+                    List<RuleAtomicParam> list = ruleParam.getUserActionSeqParams();
+                    String bufferKey1 = RuleCalcUtil.getBufferKey(logBean.getDeviceId(), list);
+                    bufferManager.putBufferData(bufferKey1, ruleParam.getUserActionSeqQueriedMaxStep(), list.get(0).getRangeStart(), list.get(0).getRangeEnd());
                     return true;
                 } else {
                     // 将参数中的maxStep恢复到缓存查完后的值
@@ -263,28 +268,35 @@ public class QueryRouterV4 {
 
                 // 如果state中没有查询到，则按照正统思路查（先查clickhouse， 再查state，再整合结果）
                 // 更新时间段
-                modifyTimeRange(userActionSeqParams, rangeStart, splitPoint);
+                modifyTimeRange(userActionSeqParams, originRangeStart, splitPoint);
 
                 // 交给clickhouse service去查远期部分
                 userActionSeqQueryClickHouseService.queryActionSeq(logBean.getDeviceId(), eventState, ruleParam);
                 int farMaxStep = ruleParam.getUserActionSeqQueriedMaxStep();
                 if (ruleParam.getUserActionSeqQueriedMaxStep() >= totalSteps) {
+                    List<RuleAtomicParam> list = ruleParam.getUserActionSeqParams();
+                    String bufferKey1 = RuleCalcUtil.getBufferKey(logBean.getDeviceId(), list);
+                    bufferManager.putBufferData(bufferKey1, ruleParam.getUserActionSeqQueriedMaxStep(), list.get(0).getRangeStart(), list.get(0).getRangeEnd());
                     return true;
                 }
 
                 // 如果远期部分不足以满足整个条件，则将条件截短
-                modifyTimeRange(userActionSeqParams, splitPoint, rangeEnd);
+                modifyTimeRange(userActionSeqParams, splitPoint, originRangeEnd);
                 // 截短序列
                 ruleParam.setUserActionSeqParams(userActionSeqParams.subList(farMaxStep, userActionSeqParams.size()));
                 // 查询
                 userActionSeqQueryStateService.queryActionSeq(logBean.getDeviceId(), eventState, ruleParam);
                 int nearMaxStep = ruleParam.getUserActionSeqQueriedMaxStep();
-
+                String bufferKey1 = RuleCalcUtil.getBufferKey(logBean.getDeviceId(), userActionSeqParams);
+                bufferManager.putBufferData(bufferKey1, ruleParam.getUserActionSeqQueriedMaxStep(), originRangeStart, originRangeEnd);
                 // 整合最终结果，塞回参数对象
                 ruleParam.setUserActionSeqQueriedMaxStep(farMaxStep + nearMaxStep);
                 return farMaxStep + nearMaxStep >= totalSteps;
             } else {  // 如果条件的时间窗口结束时间小于分界点，则在clickhouse查询
                 boolean b = userActionSeqQueryClickHouseService.queryActionSeq(logBean.getDeviceId(), null, ruleParam);
+                String bufferKey1 = RuleCalcUtil.getBufferKey(logBean.getDeviceId(), ruleParam.getUserActionSeqParams());
+                List<RuleAtomicParam> list = ruleParam.getUserActionSeqParams();
+                bufferManager.putBufferData(bufferKey1, ruleParam.getUserActionSeqQueriedMaxStep(), list.get(0).getRangeStart(), list.get(0).getRangeEnd());
                 return b;
             }
         }
