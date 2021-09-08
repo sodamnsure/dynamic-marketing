@@ -39,9 +39,9 @@ public class UserProfileDataGen {
                 // 创建Put对象，输入RowKey
                 Put put = new Put(Bytes.toBytes(deviceId));
                 // 给这个人生成1千个KV
-                for (int j = 1; j <= 1000; j++) {
+                for (int j = 1; j <= 10; j++) {
                     String key = "k" + j;
-                    String value = "v" + RandomUtils.nextInt(1, 1000);
+                    String value = "v" + RandomUtils.nextInt(1, 10);
                     put.addColumn(Bytes.toBytes("f"), Bytes.toBytes(key), Bytes.toBytes(value));
                 }
                 // 将这条画像数据添加到list中
